@@ -1,5 +1,1 @@
-
-
-pub async fn middleware_custom_header() {
-    
-}
+pub async fn middleware_custom_header() {}
