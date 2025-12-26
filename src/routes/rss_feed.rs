@@ -1,7 +1,11 @@
-use axum::Json;
+use axum::{
+    Json,
+    response::{IntoResponse, Response},
+};
+use reqwest::StatusCode;
 use rss::Channel;
 use serde::{Deserialize, Serialize};
-use std::{error::Error, process::exit};
+use std::error::Error;
 
 #[derive(Serialize, Deserialize)]
 pub struct RSSResponse {
@@ -25,12 +29,12 @@ async fn get_feed_channel() -> Result<Channel, Box<dyn Error>> {
     Ok(channel)
 }
 
-pub async fn rss_feed() -> Json<RSSResponse> {
+pub async fn rss_feed() -> Response {
     let channel = match get_feed_channel().await {
         Ok(c) => c,
         Err(err) => {
             eprintln!("{}", err);
-            exit(1);
+            return (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()).into_response();
         }
     };
 
@@ -45,5 +49,5 @@ pub async fn rss_feed() -> Json<RSSResponse> {
         });
     }
 
-    Json(rss_response)
+    (axum::http::StatusCode::OK, Json(rss_response)).into_response()
 }

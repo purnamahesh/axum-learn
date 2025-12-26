@@ -4,8 +4,10 @@ use axum::{
     routing::{get, post},
 };
 use serde::{Deserialize, Serialize};
+use std::error::Error;
 use tower_http::cors::{Any, CorsLayer};
 
+use get_data_from_db::get_data_from_db;
 use hello_world::hello_world;
 use middleware_custom_header::middleware_custom_header;
 use middleware_message::middleware_message;
@@ -15,6 +17,10 @@ use path_handler::path_handler;
 use query_params::query_params;
 use rss_feed::rss_feed;
 
+use crate::routes::db_connection::create_db_connection;
+
+mod db_connection;
+mod get_data_from_db;
 mod hello_world;
 mod middleware_custom_header;
 mod middleware_message;
@@ -29,7 +35,7 @@ pub struct SharedData {
     pub msg: String,
 }
 
-pub fn create_routes() -> Router {
+pub async fn create_routes() -> Result<Router, Box<dyn Error>> {
     let cors = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
         .allow_origin(Any);
@@ -38,7 +44,9 @@ pub fn create_routes() -> Router {
         msg: "Hello from Shread Data".to_string(),
     };
 
-    Router::new()
+    let conn_pool = create_db_connection().await?;
+
+    Ok(Router::new()
         .route("/", get(hello_world))
         .route("/mirror_body_string", post(mirror_body_string))
         .route("/mirror_body_json", post(mirror_body_json))
@@ -48,6 +56,8 @@ pub fn create_routes() -> Router {
         .route("/middleware_message", get(middleware_message))
         .route("/middleware_custom_header", get(middleware_custom_header))
         .route("/rss", get(rss_feed))
+        .route("/database", get(get_data_from_db))
         .layer(cors)
         .layer(Extension(shared_data))
+        .layer(Extension(conn_pool)))
 }
